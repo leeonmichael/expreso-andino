@@ -1,0 +1,61 @@
+# =====================================================================
+#  docker-compose.yml  ·  SIMULACRO DE DESPLIEGUE (Entrega 1)
+#  NO construye nada: descarga las imágenes ya publicadas en Docker Hub.
+#  --> Reemplaza lemichaek por tu usuario real de Docker Hub.
+#  --> En la carpeta del simulacro este archivo debe llamarse
+#      docker-compose.yml y estar acompañado SOLO por .env
+# =====================================================================
+services:
+
+  db:
+    image: mysql:8.0
+    container_name: expreso_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - red_interna
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${DB_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    image: lemichaek/expreso-api:latest      # <-- Imagen descargada de Docker Hub
+    container_name: expreso_api
+    restart: always
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - red_interna
+
+  web:
+    image: lemichaek/expreso-web:latest      # <-- Imagen descargada de Docker Hub
+    container_name: expreso_web
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - red_interna
+
+networks:
+  red_interna:
+    driver: bridge
+
+volumes:
+  db_data:

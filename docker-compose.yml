@@ -1,0 +1,59 @@
+# =====================================================================
+#  docker-compose.yml  ·  ENTORNO LOCAL (construye desde el código)
+#  Úsalo para desarrollar y para la Entrega 2 (probar en localhost:80).
+#  Levanta 3 servicios: web (Nginx) + backend (Flask) + db (MySQL).
+# =====================================================================
+services:
+
+  db:
+    image: mysql:8.0
+    container_name: expreso_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql          # Volumen: la data sobrevive aunque el contenedor caiga
+    networks:
+      - red_interna
+    healthcheck:                        # El backend esperará a que MySQL esté listo
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${DB_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend                    # Construye la imagen a partir de backend/Dockerfile
+    container_name: expreso_api
+    restart: always
+    environment:
+      DB_HOST: db                       # Se conecta a MySQL por el nombre del servicio
+      DB_PORT: 3306
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - red_interna                     # NO expone puertos al host: solo es accesible internamente
+
+  web:
+    build: ./web                        # Construye la imagen de Nginx
+    container_name: expreso_web
+    restart: always
+    ports:
+      - "80:80"                         # Único servicio accesible desde el navegador
+    depends_on:
+      - backend
+    networks:
+      - red_interna
+
+networks:
+  red_interna:
+    driver: bridge
+
+volumes:
+  db_data:

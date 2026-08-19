@@ -1,0 +1,67 @@
+# =====================================================================
+#  docker-compose.yml  ·  PRODUCCIÓN EN LA NUBE (Entrega 3)
+#  Para la instancia de Oracle Cloud (Ubuntu).
+#  Nginx Proxy Manager reemplaza al Nginx simple y se encarga del
+#  HTTPS (Let's Encrypt). El dominio de DuckDNS se redirige al
+#  contenedor "backend" en el puerto 5050 desde el panel de NPM (:81).
+#  --> Reemplaza TU_USUARIO por tu usuario real de Docker Hub.
+# =====================================================================
+services:
+
+  db:
+    image: mysql:8.0
+    container_name: expreso_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - red_interna
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${DB_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    image: TU_USUARIO/expreso-api:latest      # <-- Imagen publicada en Docker Hub
+    container_name: expreso_api
+    restart: always
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - red_interna
+
+  npm:
+    image: jc21/nginx-proxy-manager:latest
+    container_name: nginx_proxy_manager
+    restart: always
+    ports:
+      - "80:80"     # Tráfico HTTP
+      - "443:443"   # Tráfico HTTPS
+      - "81:81"     # Panel de administración web de NPM
+    volumes:
+      - npm_data:/data
+      - npm_letsencrypt:/etc/letsencrypt
+    networks:
+      - red_interna
+
+networks:
+  red_interna:
+    driver: bridge
+
+volumes:
+  db_data:
+  npm_data:
+  npm_letsencrypt:
