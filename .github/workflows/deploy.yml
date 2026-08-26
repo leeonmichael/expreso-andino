@@ -1,16 +1,36 @@
-name: CI/CD - Pruebas y Despliegue
+name: CI/CD Seguro - Pruebas, Seguridad y Despliegue
 
-# Se ejecuta automáticamente en cada push a la rama main
 on:
   push:
+    branches: [ "main", "feature/vulnerabilidades" ]
+  pull_request:
     branches: [ "main" ]
-  workflow_dispatch:        # Permite lanzarlo manualmente desde la pestaña Actions
+  workflow_dispatch:
 
 jobs:
 
   # ============================================================
-  #  TRABAJO 1: PRUEBAS (Pytest)
-  #  Corre la prueba unitaria sobre la app antes de desplegar.
+  #  SAST: Seguridad del CÓDIGO con Bandit
+  #  Falla si encuentra vulnerabilidades de severidad ALTA
+  #  (por ejemplo: Flask con debug=True).
+  # ============================================================
+  bandit:
+    name: Seguridad de Codigo (Bandit)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clonar el repositorio
+        uses: actions/checkout@v4
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Instalar Bandit
+        run: pip install bandit
+      - name: Analizar el codigo (falla con severidad ALTA)
+        run: bandit -r backend/ --severity-level high
+
+  # ============================================================
+  #  Pruebas unitarias con Pytest
   # ============================================================
   test:
     name: Pruebas (Pytest)
@@ -18,56 +38,72 @@ jobs:
     steps:
       - name: Clonar el repositorio
         uses: actions/checkout@v4
-
       - name: Configurar Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
       - name: Instalar dependencias
         run: |
           pip install -r backend/requirements.txt
           pip install pytest
-
       - name: Ejecutar pruebas
         run: pytest -v
 
   # ============================================================
-  #  TRABAJO 2: CONSTRUCCIÓN Y DESPLIEGUE
-  #  "needs: test" hace que SOLO se ejecute si las pruebas pasan.
+  #  Seguridad de la IMAGEN con Trivy
+  #  Construye la imagen y la escanea. Falla si hay
+  #  vulnerabilidades HIGH o CRITICAL (imagen base antigua).
   # ============================================================
-  deploy:
-    name: Construir y Desplegar
-    needs: test               # <-- Condición: depende de que 'test' termine con éxito
+  trivy:
+    name: Seguridad de Imagen (Trivy)
     runs-on: ubuntu-latest
     steps:
       - name: Clonar el repositorio
         uses: actions/checkout@v4
+      - name: Construir la imagen para escanear
+        run: docker build -t expreso-api:scan ./backend
+      - name: Escanear la imagen con Trivy
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: expreso-api:scan
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
 
+  # ============================================================
+  #  Despliegue: SOLO si pruebas + Bandit + Trivy pasan,
+  #  y SOLO en la rama main.
+  # ============================================================
+  deploy:
+    name: Construir y Desplegar
+    needs: [bandit, test, trivy]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clonar el repositorio
+        uses: actions/checkout@v4
       - name: Configurar Docker Buildx
         uses: docker/setup-buildx-action@v3
-
-      - name: Iniciar sesión en Docker Hub
+      - name: Iniciar sesion en Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-
       - name: Construir y publicar imagen del Backend (API)
         uses: docker/build-push-action@v6
         with:
           context: ./backend
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/expreso-api:latest
-
       - name: Construir y publicar imagen Web (Nginx)
         uses: docker/build-push-action@v6
         with:
           context: ./web
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/expreso-web:latest
-
-      - name: Actualizar el servidor de producción (SSH)
+      - name: Actualizar el servidor de produccion (SSH)
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.EC2_HOST }}

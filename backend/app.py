@@ -123,4 +123,4 @@ def health():
 
 if __name__ == "__main__":
     # Servidor de desarrollo. En producción se usa Gunicorn (ver Dockerfile).
-    app.run(host="0.0.0.0", port=5050, debug=False)
+    app.run(host="0.0.0.0", port=5050, debug=True)
