@@ -1,4 +1,4 @@
-name: CI/CD - Build & Push a Docker Hub
+name: CI/CD - Pruebas y Despliegue
 
 # Se ejecuta automáticamente en cada push a la rama main
 on:
@@ -7,7 +7,38 @@ on:
   workflow_dispatch:        # Permite lanzarlo manualmente desde la pestaña Actions
 
 jobs:
-  build-and-push:
+
+  # ============================================================
+  #  TRABAJO 1: PRUEBAS (Pytest)
+  #  Corre la prueba unitaria sobre la app antes de desplegar.
+  # ============================================================
+  test:
+    name: Pruebas (Pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clonar el repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependencias
+        run: |
+          pip install -r backend/requirements.txt
+          pip install pytest
+
+      - name: Ejecutar pruebas
+        run: pytest -v
+
+  # ============================================================
+  #  TRABAJO 2: CONSTRUCCIÓN Y DESPLIEGUE
+  #  "needs: test" hace que SOLO se ejecute si las pruebas pasan.
+  # ============================================================
+  deploy:
+    name: Construir y Desplegar
+    needs: test               # <-- Condición: depende de que 'test' termine con éxito
     runs-on: ubuntu-latest
     steps:
       - name: Clonar el repositorio
@@ -35,3 +66,14 @@ jobs:
           context: ./web
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/expreso-web:latest
+
+      - name: Actualizar el servidor de producción (SSH)
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd expreso-andino
+            docker compose pull
+            docker compose up -d
