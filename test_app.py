@@ -12,4 +12,4 @@ def test_ruta_principal_devuelve_200():
     app.config["TESTING"] = True
     cliente = app.test_client()
     respuesta = cliente.get("/")
-    assert respuesta.status_code == 404
+    assert respuesta.status_code == 200
