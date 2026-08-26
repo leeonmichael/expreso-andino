@@ -101,7 +101,7 @@ PAGE = """<!doctype html>
 @app.route("/")
 def index():
     ok, error = check_db()
-    return render_template_string(PAGE, ok=ok, error=error, db_name=DB_CONFIG["database"])
+    return render_template_string(PAGE, ok=ok, error=error, db_name=DB_CONFIG["database"]), 500
 
 
 @app.route("/api/status")

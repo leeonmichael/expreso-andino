@@ -9,11 +9,6 @@ on:
 
 jobs:
 
-  # ============================================================
-  #  SAST: Seguridad del CÓDIGO con Bandit
-  #  Falla si encuentra vulnerabilidades de severidad ALTA
-  #  (por ejemplo: Flask con debug=True).
-  # ============================================================
   bandit:
     name: Seguridad de Codigo (Bandit)
     runs-on: ubuntu-latest
@@ -29,9 +24,6 @@ jobs:
       - name: Analizar el codigo (falla con severidad ALTA)
         run: bandit -r backend/ --severity-level high
 
-  # ============================================================
-  #  Pruebas unitarias con Pytest
-  # ============================================================
   test:
     name: Pruebas (Pytest)
     runs-on: ubuntu-latest
@@ -49,11 +41,6 @@ jobs:
       - name: Ejecutar pruebas
         run: pytest -v
 
-  # ============================================================
-  #  Seguridad de la IMAGEN con Trivy
-  #  Construye la imagen y la escanea. Falla si hay
-  #  vulnerabilidades HIGH o CRITICAL (imagen base antigua).
-  # ============================================================
   trivy:
     name: Seguridad de Imagen (Trivy)
     runs-on: ubuntu-latest
@@ -72,10 +59,6 @@ jobs:
           vuln-type: os,library
           severity: HIGH,CRITICAL
 
-  # ============================================================
-  #  Despliegue: SOLO si pruebas + Bandit + Trivy pasan,
-  #  y SOLO en la rama main.
-  # ============================================================
   deploy:
     name: Construir y Desplegar
     needs: [bandit, test, trivy]
