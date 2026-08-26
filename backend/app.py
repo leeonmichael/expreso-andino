@@ -101,7 +101,7 @@ PAGE = """<!doctype html>
 @app.route("/")
 def index():
     ok, error = check_db()
-    return render_template_string(PAGE, ok=ok, error=error, db_name=DB_CONFIG["database"])
+    return render_template_string(PAGE, ok=ok, error=error, db_name=DB_CONFIG["database"]), 500
 
 
 @app.route("/api/status")
@@ -123,4 +123,4 @@ def health():
 
 if __name__ == "__main__":
     # Servidor de desarrollo. En producción se usa Gunicorn (ver Dockerfile).
-    app.run(host="0.0.0.0", port=5050, debug=False)
+    app.run(host="0.0.0.0", port=5050, debug=True)
