@@ -1,5 +1,5 @@
 # Imagen base ligera de Python
-FROM python:3.12-slim
+FROM python:3.8
 
 # Buenas prácticas: no generar .pyc y salida sin buffer (logs en tiempo real)
 ENV PYTHONDONTWRITEBYTECODE=1 \
