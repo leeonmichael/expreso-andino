@@ -22,7 +22,7 @@ app = Flask(__name__)
 DB_CONFIG = {
     "host": os.environ.get("DB_HOST", "db"),
     "user": os.environ.get("DB_USER", "root"),
-    "password": "SuperClave123!",
+    "password": os.environ.get("DB_PASSWORD", ""),
     "database": os.environ.get("DB_NAME", "test"),
     "port": int(os.environ.get("DB_PORT", "3306")),
 }
