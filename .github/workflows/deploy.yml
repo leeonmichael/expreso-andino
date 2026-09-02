@@ -94,5 +94,5 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd expreso-andino
-            docker compose pull
-            docker compose up -d
+               docker compose -f docker-compose.prod.yml pull
+               docker compose -f docker-compose.prod.yml up -d
