@@ -36,6 +36,7 @@ def check_db():
         conn.close()
         return True, None
     except Exception as exc:  # noqa: BLE001
+        print(f"[DB ERROR] {exc}", flush=True)
         return False, str(exc)
 
 
